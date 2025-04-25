@@ -3,6 +3,20 @@ import base64
 import streamlit as st
 from openai import OpenAI
 
+st.markdown(
+    """
+    <style>
+    .stApp {
+        background-image: url("https://pbs.twimg.com/media/F2sr38KWYAAj0bc.jpg:large");
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 # Configuración general de la página
 st.set_page_config(page_title="🕷️ Spider-Vision", layout="centered", initial_sidebar_state="collapsed")
 
