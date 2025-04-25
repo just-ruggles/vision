@@ -3,6 +3,10 @@ import base64
 import streamlit as st
 from openai import OpenAI
 
+
+# Configuración general de la página
+st.set_page_config(page_title="🕷️ Spider-Vision", layout="centered", initial_sidebar_state="collapsed")
+
 st.markdown(
     """
     <style>
@@ -16,9 +20,6 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
-
-# Configuración general de la página
-st.set_page_config(page_title="🕷️ Spider-Vision", layout="centered", initial_sidebar_state="collapsed")
 
 # 💅 Estilos personalizados
 st.markdown("""
