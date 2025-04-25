@@ -1,98 +1,124 @@
 import os
-import streamlit as st
 import base64
+import streamlit as st
 from openai import OpenAI
 
-# Function to encode the image to base64
+# Configuración general de la página
+st.set_page_config(page_title="🕷️ Spider-Vision", layout="centered", initial_sidebar_state="collapsed")
+
+# 💅 Estilos personalizados
+st.markdown("""
+    <style>
+    .stApp {
+        background-color: #0d0d0d;
+        color: white;
+        font-family: 'Segoe UI', sans-serif;
+    }
+    h1 {
+        color: #FF3131;
+        text-align: center;
+        font-size: 50px;
+        text-shadow: 2px 2px 10px black;
+    }
+    .stTextInput > div > div > input,
+    .stTextArea > div > textarea {
+        background-color: #1e1e1e !important;
+        color: white !important;
+        border-radius: 8px;
+        border: 1px solid #555;
+    }
+    .stButton > button {
+        background-color: #FF3131;
+        color: white;
+        font-weight: bold;
+        border-radius: 10px;
+        font-size: 16px;
+        padding: 10px 20px;
+    }
+    .stExpanderHeader {
+        font-weight: bold;
+        color: #FF3131 !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# 🕸️ Título principal
+st.title("🕷️ SPIDER-VISION")
+
+# 🧠 Función para codificar la imagen a base64
 def encode_image(image_file):
     return base64.b64encode(image_file.getvalue()).decode("utf-8")
 
+# 🔑 Ingreso de API Key
+ke = st.text_input("🔐 Ingresa tu clave de OpenAI", type="password")
+if ke:
+    os.environ["OPENAI_API_KEY"] = ke
+    api_key = ke
+    client = OpenAI(api_key=api_key)
+else:
+    api_key = None
 
-st.set_page_config(page_title="Spider-vision", layout="centered", initial_sidebar_state="collapsed")
-# Streamlit page setup
-st.title("SPIDER-VISION")
-ke = st.text_input('Ingresa tu Clave')
-os.environ['OPENAI_API_KEY'] = ke
+# 📤 Subida de imagen
+uploaded_file = st.file_uploader("📸 Sube una imagen", type=["jpg", "jpeg", "png"])
 
-
-# Retrieve the OpenAI API Key from secrets
-api_key = os.environ['OPENAI_API_KEY']
-
-# Initialize the OpenAI client with the API key
-client = OpenAI(api_key=api_key)
-
-# File uploader allows user to add their own image
-uploaded_file = st.file_uploader("Upload an image", type=["jpg", "png", "jpeg"])
-
+# Mostrar imagen si fue cargada
 if uploaded_file:
-    # Display the uploaded image
-    with st.expander("Image", expanded = True):
+    with st.expander("📷 Vista previa de la imagen", expanded=True):
         st.image(uploaded_file, caption=uploaded_file.name, use_container_width=True)
 
-# Toggle for showing additional details input
-show_details = st.toggle("Adiciona detalles sobre la imagen", value=False)
-
+# 📝 Input adicional opcional
+show_details = st.toggle("🗒️ Añadir detalles sobre la imagen")
+additional_details = ""
 if show_details:
-    # Text input for additional details about the image, shown only if toggle is True
-    additional_details = st.text_area(
-        "Adiciona contexto de la imagen aqui:",
-        disabled=not show_details
-    )
+    additional_details = st.text_area("Agrega aquí un poco de contexto:")
 
-# Button to trigger the analysis
-analyze_button = st.button("Analiza la imagen", type="secondary")
+# 🧪 Botón para analizar imagen
+analyze_button = st.button("🔍 Analizar imagen")
 
-# Check if an image has been uploaded, if the API key is available, and if the button has been pressed
-if uploaded_file is not None and api_key and analyze_button:
-
-    with st.spinner("Analizando ..."):
-        # Encode the image
-        base64_image = encode_image(uploaded_file)
-    
-        prompt_text = ("Describe what you see in the image in spanish")
-    
-        if show_details and additional_details:
-            prompt_text += (
-                f"\n\nAdditional Context Provided by the User:\n{additional_details}"
-            )
-    
-        # Create the payload for the completion request - CORRECTED FORMAT
-        messages = [
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": prompt_text},
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": f"data:image/jpeg;base64,{base64_image}"
-                        }
-                    },
-                ],
-            }
-        ]
-    
-        # Make the request to the OpenAI API
+# 🧠 Procesamiento de imagen
+if uploaded_file and api_key and analyze_button:
+    with st.spinner("🧠 Analizando la imagen..."):
         try:
-            # Stream the response
+            base64_image = encode_image(uploaded_file)
+            prompt_text = "Describe lo que ves en la imagen, en español."
+
+            if additional_details:
+                prompt_text += f"\n\nContexto adicional proporcionado por el usuario:\n{additional_details}"
+
+            messages = [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt_text},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{base64_image}"
+                            },
+                        },
+                    ],
+                }
+            ]
+
             full_response = ""
             message_placeholder = st.empty()
             for completion in client.chat.completions.create(
-                model="gpt-4o", messages=messages,   
-                max_tokens=1200, stream=True
+                model="gpt-4o",
+                messages=messages,
+                max_tokens=1200,
+                stream=True,
             ):
-                # Check if there is content to display
-                if completion.choices[0].delta.content is not None:
+                if completion.choices[0].delta.content:
                     full_response += completion.choices[0].delta.content
                     message_placeholder.markdown(full_response + "▌")
-            # Final update to placeholder after the stream ends
+
             message_placeholder.markdown(full_response)
-    
+
         except Exception as e:
-            st.error(f"An error occurred: {e}")
-else:
-    # Warnings for user action required
-    if not uploaded_file and analyze_button:
-        st.warning("Please upload an image.")
-    if not api_key:
-        st.warning("Por favor ingresa tu API key.")
+            st.error(f"❌ Ocurrió un error al analizar la imagen: {e}")
+
+# 🧯 Validaciones
+if analyze_button and not uploaded_file:
+    st.warning("⚠️ Debes subir una imagen para analizar.")
+elif analyze_button and not api_key:
+    st.warning("⚠️ Ingresa tu clave de API para continuar.")
